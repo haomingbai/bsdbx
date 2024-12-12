@@ -14,17 +14,32 @@ int main(int argc, char **argv)
     a.parse_check(argc, argv);
 
     // Get the values of the options
-    auto mode = a.get<std::string>("mode") == "compiler" ? 1 : 0;
+    auto mode = a.get<std::string>("mode");
     auto path = a.get<std::string>("path");
 
     // Load the security rules based on the mode
-    if (mode)
+    if (mode == "compiler")
     {
-        return bsdbx::loadCompilerRule();
+        auto r = bsdbx::loadCompilerRule();
+        if (r < 0)
+        {
+            perror("Error loading compiler rule");
+            return r;
+        }
+    }
+    else if (mode == "runner")
+    {
+        auto r = bsdbx::loadRunnerRule(path.c_str());
+        if (r < 0)
+        {
+            perror("Error loading runner rule");
+            return r;
+        }
     }
     else
     {
-        return bsdbx::loadRunnerRule(path.c_str());
+        std::cerr << "Invalid mode: " << mode << std::endl;
+        return 1;
     }
 
     // Prepare the arguments for the execve system call
