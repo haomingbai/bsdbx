@@ -2,13 +2,14 @@
 #include "rule.h"
 #include <unistd.h>
 
-int main(int argc, char **argv)
+int main(int argc, char **argv, char **envp)
 {
     // Create a parser object and add the required options
     cmdline::parser a;
     a.add<std::string>("mode", 'm', "Mode of operation, which can be either \"compiler\" or \"runner\"", false,
                        "runner");
     a.add<std::string>("path", 'p', "Path to the executable file", true);
+    a.add<std::string>("output", 'o', "Output file path", false);
 
     // Parse the command line arguments
     a.parse_check(argc, argv);
@@ -51,7 +52,22 @@ int main(int argc, char **argv)
         args[i + 1] = new char[a.rest()[i].size() + 1];
         strcpy(args[i + 1], a.rest()[i].c_str());
     }
+    args[a.rest().size() + 1] = nullptr;
+
+    if (mode == "compiler" && a.exist("output"))
+    {
+        args[a.rest().size() + 1] = "-o";
+        args[a.rest().size() + 2] = new char[a.get<std::string>("output").size() + 1];
+        strcpy(args[a.rest().size() + 2], a.get<std::string>("output").c_str());
+        args[a.rest().size() + 3] = nullptr;
+    }
 
     // Execute the executable file
-    execve(path.c_str(), args, nullptr);
+    auto result = execve(path.c_str(), args, envp);
+    if (result)
+    {
+        perror("Error executing the file");
+        return result;
+    }
+    
 }
