@@ -1,73 +1,124 @@
-#include "cmdline.h"
 #include "rule.h"
+#include <exception>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <unistd.h>
+#include <vector>
 
 int main(int argc, char **argv, char **envp)
 {
-    // Create a parser object and add the required options
-    cmdline::parser a;
-    a.add<std::string>("mode", 'm', "Mode of operation, which can be either \"compiler\" or \"runner\"", false,
-                       "runner");
-    a.add<std::string>("path", 'p', "Path to the executable file", true);
-    a.add<std::string>("output", 'o', "Output file path", false);
-
-    // Parse the command line arguments
-    a.parse_check(argc, argv);
-
-    // Get the values of the options
-    auto mode = a.get<std::string>("mode");
-    auto path = a.get<std::string>("path");
-
-    // Load the security rules based on the mode
-    if (mode == "compiler")
+    // Process the args manually
+    bool mode = 0;
+    int findMode = 0;
+    for (size_t i = 0; i < argc; i++)
     {
-        auto r = bsdbx::loadCompilerRule();
-        if (r < 0)
+        std::string_view str(argv[i]);
+        if (str == "--mode")
         {
-            perror("Error loading compiler rule");
-            return r;
+            findMode = 2;
+            if (i >= argc - 1)
+            {
+                throw std::invalid_argument("Missing argument for sandbox mode");
+            }
+            i++;
+            std::string_view m(argv[i]);
+            if (m == "compiler")
+            {
+                mode = 1;
+            }
+            else if (m == "runner")
+            {
+                mode = 0;
+            }
+            else
+            {
+                std::string ex = "Invalid mode: ";
+                ex += m;
+                throw std::invalid_argument(ex);
+            }
+            break;
+        }
+        else if (str.substr(0, 7) == "--mode=")
+        {
+            findMode = 1;
+            if (str.substr(7) == "compiler")
+            {
+                mode = 1;
+            }
+            else if (str.substr(7) == "runner")
+            {
+                mode = 0;
+            }
+            else
+            {
+                std::string ex = "Invalid mode: ";
+                ex += str.substr(7);
+                throw std::invalid_argument(ex);
+            }
+            break;
+            ;
+        }
+        else if (str == "-m")
+        {
+            findMode = 2;
+            if (i >= argc - 1)
+            {
+                throw std::invalid_argument("Missing argument for sandbox mode");
+            }
+            i++;
+            std::string_view m(argv[i]);
+            if (m == "compiler")
+            {
+                mode = 1;
+            }
+            else if (m == "runner")
+            {
+                mode = 0;
+            }
+            else
+            {
+                std::string ex = "Invalid mode: ";
+                ex += m;
+                throw std::invalid_argument(ex);
+            }
+            break;
         }
     }
-    else if (mode == "runner")
+
+    // Test whether there possibly exists an executable path.
+    if (argc - findMode <= 1)
     {
-        auto r = bsdbx::loadRunnerRule(path.c_str());
-        if (r < 0)
+        throw std::invalid_argument("No executable file");
+    }
+
+    // Copy args.
+    auto args = new char *[argc]();
+    for (size_t i = 0, flag = 0; i < argc - 1 - findMode; i++)
+    {
+        std::string_view str = argv[i + 1];
+        if (!flag && (str == "-m" || str == "--mode" || str.substr(0, 7) == "--mode="))
         {
-            perror("Error loading runner rule");
-            return r;
+            flag = findMode;
         }
+        args[i] = argv[i + 1 + flag];
+    }
+
+    // Load security mode.
+    if (mode)
+    {
+        bsdbx::loadCompilerRule();
     }
     else
     {
-        std::cerr << "Invalid mode: " << mode << std::endl;
-        return 1;
+        bsdbx::loadRunnerRule(args[0]);
     }
 
-    // Prepare the arguments for the execve system call
-    char **args = new char *[argc];
-    args[0] = new char[path.size() + 1];
-    strcpy(args[0], path.c_str());
-    for (int i = 0; i < a.rest().size(); i++)
-    {
-        args[i + 1] = new char[a.rest()[i].size() + 1];
-        strcpy(args[i + 1], a.rest()[i].c_str());
-    }
-    args[a.rest().size() + 1] = nullptr;
+    // Execute the command
+    auto res = execve(args[0], args, envp);
 
-    if (mode == "compiler" && a.exist("output"))
-    {
-        args[a.rest().size() + 1] = "-o";
-        args[a.rest().size() + 2] = new char[a.get<std::string>("output").size() + 1];
-        strcpy(args[a.rest().size() + 2], a.get<std::string>("output").c_str());
-        args[a.rest().size() + 3] = nullptr;
-    }
-
-    // Execute the executable file
-    auto result = execve(path.c_str(), args, envp);
-    if (result)
-    {
-        perror("Error executing the file");
-        return result;
-    }
-    
+    // If there is an error, process it.
+    perror("Execution Fail");
+    return res;
 }
