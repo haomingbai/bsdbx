@@ -177,21 +177,24 @@ int main(int argc, char **argv, char **envp)
     auto args = new char *[argc]();
     for (size_t i = 0, flag = 0, moFlag = 0, memFlag = 0, tFlag = 0; i < argc - 1 - findMode - findTimeLimit; i++)
     {
-        std::string_view str = argv[i + 1];
+        std::string_view str = argv[i + 1 + flag];
         if (!moFlag && (str == "-m" || str == "--mode" || str.substr(0, 7) == "--mode="))
         {
             flag += findMode;
             moFlag = 1;
+            str = argv[i + 1 + flag];
         }
-        else if (!tFlag && (str == "-t" || str == "--time-limit" || str.substr(0, 13) == "--time-limit="))
+        if (!tFlag && (str == "-t" || str == "--time-limit" || str.substr(0, 13) == "--time-limit="))
         {
             flag += findTimeLimit;
             tFlag = 1;
+            str = argv[i + 1 + flag];
         }
-        else if (!memFlag && (str == "--memory-limit" || str.substr(0, 15) == "--memory-limit="))
+        if (!memFlag && (str == "--memory-limit" || str.substr(0, 15) == "--memory-limit="))
         {
             flag += findMemoryLimit;
             memFlag = 1;
+            str = argv[i + 1 + flag];
         }
         args[i] = argv[i + 1 + flag];
     }
@@ -247,7 +250,7 @@ int main(int argc, char **argv, char **envp)
         {
             std::cerr << "MLE" << std::endl;
         }
-        
+
         if (time != -1)
         {
             std::cerr << time << std::endl;
@@ -256,7 +259,7 @@ int main(int argc, char **argv, char **envp)
         {
             std::cerr << "TLE" << std::endl;
         }
-        
+
         return status;
     }
     else
