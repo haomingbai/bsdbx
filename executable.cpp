@@ -260,7 +260,14 @@ int main(int argc, char **argv, char **envp)
             std::cerr << "TLE" << std::endl;
         }
 
-        return status;
+        if (time == -1 || memory == -1)
+        {
+            return -1;
+        }
+        else
+        {
+            return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+        }
     }
     else
     {
