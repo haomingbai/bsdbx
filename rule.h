@@ -1,4 +1,5 @@
-
+#ifndef RULE_H
+#define RULE_H
 
 #include <fcntl.h>
 #include <seccomp.h>
@@ -476,10 +477,10 @@ int loadRunnerRule(const char filename[])
     // Define the banned actions
     int bannedActions[] = {SCMP_SYS(socket),    SCMP_SYS(setuid),   SCMP_SYS(setgid),   SCMP_SYS(setpgid),
                            SCMP_SYS(setsid),    SCMP_SYS(setreuid), SCMP_SYS(setregid), SCMP_SYS(setgroups),
-                           SCMP_SYS(setrlimit), SCMP_SYS(vfork),    SCMP_SYS(fork),     SCMP_SYS(chmod),
-                           SCMP_SYS(chown),     SCMP_SYS(chown32),  SCMP_SYS(fchmod),   SCMP_SYS(fchown),
-                           SCMP_SYS(fchownat),  SCMP_SYS(link),     SCMP_SYS(shutdown), SCMP_SYS(seccomp),
-                           SCMP_SYS(rmdir),     SCMP_SYS(rename)};
+                           SCMP_SYS(setrlimit), SCMP_SYS(vfork),    SCMP_SYS(chmod),    SCMP_SYS(chown),
+                           SCMP_SYS(chown32),   SCMP_SYS(fchmod),   SCMP_SYS(fchown),   SCMP_SYS(fchownat),
+                           SCMP_SYS(link),      SCMP_SYS(shutdown), SCMP_SYS(seccomp),  SCMP_SYS(rmdir),
+                           SCMP_SYS(rename)};
 
     auto context = seccomp_init(SCMP_ACT_ALLOW);
     for (auto action : bannedActions)
@@ -557,4 +558,20 @@ int loadCompilerRule()
     seccomp_release(context);
     return result;
 }
+
+int loadBanFork()
+{
+    auto context = seccomp_init(SCMP_ACT_ALLOW);
+    auto result = seccomp_rule_add(context, SCMP_ACT_KILL, SCMP_SYS(fork), 0);
+    if (result < 0)
+    {
+        seccomp_release(context);
+        return result;
+    }
+    result = seccomp_load(context);
+    seccomp_release(context);
+    return result;
+}
 } // namespace bsdbx
+
+#endif
