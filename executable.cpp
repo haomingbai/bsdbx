@@ -175,7 +175,8 @@ int main(int argc, char **argv, char **envp)
 
     // Copy args.
     auto args = new char *[argc]();
-    for (size_t i = 0, flag = 0, moFlag = 0, memFlag = 0, tFlag = 0; i < argc - 1 - findMode - findTimeLimit; i++)
+    for (size_t i = 0, flag = 0, moFlag = 0, memFlag = 0, tFlag = 0;
+         i < argc - 1 - findMode - findTimeLimit - findMemoryLimit; i++)
     {
         std::string_view str = argv[i + 1 + flag];
         if (!moFlag && (str == "-m" || str == "--mode" || str.substr(0, 7) == "--mode="))
@@ -196,7 +197,10 @@ int main(int argc, char **argv, char **envp)
             memFlag = 1;
             str = argv[i + 1 + flag];
         }
-        args[i] = argv[i + 1 + flag];
+        if (i < argc - 1 - findMode - findTimeLimit - findMemoryLimit)
+        {
+            args[i] = argv[i + 1 + flag];
+        }
     }
 
     // Load security mode.
